@@ -10,12 +10,18 @@ document.addEventListener("alpine:init", () => {
     myList: [],
     searchQuery: "",
     searchResults: [],
-    currentVideoUrl: "",
     videoSources: [],
     currentSourceIndex: 0,
     isLoading: true,
     hasError: false,
     copyrightYears: "",
+
+    // Video Player State
+    isFullscreen: false,
+    isPlaying: true,
+    isMuted: false,
+    progress: 0,
+    duration: 120,
 
     // Lifecycle
     async initialize() {
@@ -37,6 +43,11 @@ document.addEventListener("alpine:init", () => {
       // Add popstate event listener for browser navigation
       window.addEventListener("popstate", () => {
         this.handleRouting()
+      })
+
+      // Add fullscreen change listener
+      document.addEventListener("fullscreenchange", () => {
+        this.isFullscreen = !!document.fullscreenElement
       })
     },
 
@@ -84,46 +95,43 @@ document.addEventListener("alpine:init", () => {
     },
 
     // Video Player
-    setupVideoPlayer(id, type) {
+    setupVideoSources(id, type) {
       // Multiple video sources to try
       this.videoSources = [
-        `https://vidsrc.xyz/embed/${type}/${id}`,
-        `https://2embed.org/embed/${type}/${id}`,
-        `https://www.2embed.cc/embed/${type}/${id}`,
-        `https://vidsrc.me/embed/${type}/${id}`,
+        `https://vidsrc.net/embed/${type}/${id}`,
         `https://vidsrc.to/embed/${type}/${id}`,
+        `https://embed.vidsrc.pk/${type}/${id}`,
+        `https://player.vidsrc.co/embed/${type}/${id}`,
+        `https://vidsrc.cc/v2/embed/${type}/${id}`,
+        `https://player.videasy.net/${type}/${id}`,
       ]
-
-      this.currentSourceIndex = 0
-      this.currentVideoUrl = this.videoSources[0]
-      this.isLoading = true
-      this.hasError = false
     },
 
-    handleVideoLoad() {
-      this.isLoading = false
-      this.hasError = false
-    },
-
-    handleVideoError() {
-      console.log("Error loading video from:", this.currentVideoUrl)
-      this.isLoading = false
-      this.hasError = true
-
-      // Try next source automatically after a delay
-      setTimeout(() => {
-        this.tryNextSource()
-      }, 3000)
-    },
-
-    tryNextSource() {
-      if (this.currentSourceIndex < this.videoSources.length - 1) {
-        this.currentSourceIndex++
-        this.currentVideoUrl = this.videoSources[this.currentSourceIndex]
-        this.isLoading = true
-        this.hasError = false
-        console.log(`Trying source ${this.currentSourceIndex + 1}/${this.videoSources.length}: ${this.currentVideoUrl}`)
+    // Video Player Controls
+    toggleFullscreen(container) {
+      if (!this.isFullscreen) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen()
+        } else if (container.webkitRequestFullscreen) {
+          container.webkitRequestFullscreen()
+        } else if (container.msRequestFullscreen) {
+          container.msRequestFullscreen()
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen()
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen()
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen()
+        }
       }
+    },
+
+    formatTime(seconds) {
+      const mins = Math.floor(seconds / 60)
+      const secs = Math.floor(seconds % 60)
+      return `${mins}:${secs < 10 ? "0" : ""}${secs}`
     },
 
     // Navigation and Routing
@@ -144,7 +152,54 @@ document.addEventListener("alpine:init", () => {
         const segments = path.split("/").filter(Boolean)
         const id = segments[1]
         const type = searchParams.get("type") || "movie"
-        this.setupVideoPlayer(id, type)
+        this.setupVideoSources(id, type)
+      } else if (path.match(/\/(movie|tv)\/\d+/)) {
+        this.currentView = "detail"
+        const segments = path.split("/").filter(Boolean)
+        const type = segments[0]
+        const id = segments[1]
+        this.fetchMovieDetails(id, type)
+      } else if (path === "/search") {
+        this.currentView = "search"
+        const query = searchParams.get("q")
+        if (query) {
+          this.searchQuery = query
+          this.performSearch(query)
+        }
+      }
+    },
+
+    async fetchMovieDetails(id, type) {
+      this.isLoading = true
+      try {
+        const response = await fetch(`/api/tmdb/details/${type}/${id}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch movie details: ${response.status}`)
+        }
+        this.currentMovie = await response.json()
+        this.isLoading = false
+      } catch (error) {
+        console.error("Error fetching movie details:", error)
+        this.hasError = true
+        this.isLoading = false
+      }
+    },
+
+    // Search functionality
+    async performSearch(query) {
+      this.isLoading = true
+      try {
+        const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`)
+        if (!response.ok) {
+          throw new Error(`Search failed: ${response.status}`)
+        }
+        const data = await response.json()
+        this.searchResults = data.results || []
+        this.isLoading = false
+      } catch (error) {
+        console.error("Error searching:", error)
+        this.hasError = true
+        this.isLoading = false
       }
     },
 

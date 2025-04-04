@@ -97,6 +97,30 @@ app.get("/api/tmdb/documentaries", async (req, res) => {
   }
 })
 
+// New endpoint for movie/TV show details
+app.get("/api/tmdb/details/:type/:id", async (req, res) => {
+  try {
+    const { type, id } = req.params
+    const data = await fetchFromTMDB(`/${type}/${id}?append_to_response=videos,similar,credits`)
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching details:", error)
+    res.status(500).json({ error: "Failed to fetch details" })
+  }
+})
+
+// Search endpoint
+app.get("/api/tmdb/search", async (req, res) => {
+  try {
+    const query = req.query.q
+    const data = await fetchFromTMDB(`/search/multi?query=${encodeURIComponent(query)}`)
+    res.json(data)
+  } catch (error) {
+    console.error("Error searching:", error)
+    res.status(500).json({ error: "Failed to search" })
+  }
+})
+
 // Helper function to make API requests
 async function fetchFromTMDB(endpoint) {
   const API_KEY = process.env.TMDB_API_KEY
