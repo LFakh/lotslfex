@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lotsoflex </title>
+  <meta name="description" content="A streaming platform built with Alpine.js and TMDB API">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/lotsoflex-logo.png">
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            lotsoflex: {
+              primary: '#D9705E',
+              dark: '#052439'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.12.3/dist/cdn.min.js"></script>
+  
+  <!-- Custom styles -->
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    .text-shadow-md {
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div x-data="app()" x-init="initialize()" class="min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="fixed top-0 z-50 w-full transition-colors duration-300" 
+         :class="{ 'bg-black': isScrolled, 'bg-gradient-to-b from-black/80 to-transparent': !isScrolled }">
+      <div class="flex items-center space-x-2 md:space-x-10 px-4 md:px-8 py-4">
+        <a href="/" class="h-5 md:h-7">
+  <img src="/lotsoflex-logo.png" alt="Lotsoflex" class="h-7 cursor-pointer object-contain">
+</a>
+
+        </a>
+        
+        <div class="hidden md:flex space-x-4">
+          <a href="/" class="text-sm font-light text-white hover:text-gray-300" 
+             :class="{ 'font-medium': currentView === 'home' }">Home</a>
+          <a href="/tv-shows" class="text-sm font-light text-white hover:text-gray-300"
+             :class="{ 'font-medium': currentView === 'tv' }">TV Shows</a>
+          <a href="/movies" class="text-sm font-light text-white hover:text-gray-300"
+             :class="{ 'font-medium': currentView === 'movies' }">Movies</a>
+          <a href="/my-list" class="text-sm font-light text-white hover:text-gray-300"
+             :class="{ 'font-medium': currentView === 'my-list' }">My List</a>
+        </div>
+        
+        <div class="flex-1"></div>
+        
+        <div class="flex items-center space-x-4 text-sm font-light">
+          <!-- Search -->
+          <div x-data="{ isOpen: false, query: '' }">
+            <template x-if="isOpen">
+              <form @submit.prevent="search(query)" class="flex items-center">
+                <input
+                  x-model="query"
+                  type="text"
+                  placeholder="Titles, people, genres"
+                  class="bg-black/80 border border-white/20 text-white px-4 py-1 w-64 focus:outline-none"
+                  @focus="isOpen = true"
+                >
+                <button type="submit" class="p-2 text-gray-400 hover:text-white cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                <button type="button" @click="isOpen = false" class="p-2 text-gray-400 hover:text-white cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </form>
+            </template>
+            
+            <template x-if="!isOpen">
+              <button @click="isOpen = true" class="text-gray-200 hover:text-white cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </template>
+          </div>
+          
+          <!-- Profile -->
+          <div class="flex items-center space-x-2 cursor-pointer">
+            <img src="/placeholder.svg?height=32&width=32" alt="Profile" class="w-8 h-8 rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="flex-grow">
+      <!-- Home View -->
+      <div x-show="currentView === 'home'" class="pt-16">
+        <!-- Banner -->
+        <div class="relative">
+          <div class="flex flex-col space-y-2 py-16 md:space-y-4 lg:h-[65vh] lg:justify-end lg:pb-12">
+            <div class="absolute top-0 left-0 -z-10 h-[95vh] w-full">
+              <template x-if="featuredMovie.backdrop_path">
+                <img :src="'https://image.tmdb.org/t/p/original' + featuredMovie.backdrop_path" 
+                     :alt="featuredMovie.title || featuredMovie.name" 
+                     class="object-cover w-full h-full">
+              </template>
+              <div class="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black"></div>
+            </div>
+            
+            <div class="pt-24 md:pt-32 lg:pt-48 px-4 md:px-8 space-y-4 md:space-y-6 max-w-xl">
+              <h1 class="text-2xl md:text-4xl lg:text-5xl font-bold text-shadow-md" 
+                  x-text="featuredMovie.title || featuredMovie.name"></h1>
+              <p class="text-shadow-md max-w-xs text-xs md:max-w-lg md:text-sm lg:max-w-2xl lg:text-base" 
+                 x-text="featuredMovie.overview"></p>
+              <div class="flex space-x-3">
+                <button @click="watchMovie(featuredMovie)" 
+                       class="bg-white text-black hover:bg-gray-300 px-4 py-2 rounded flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Play
+                </button>
+                <button @click="showMovieDetails(featuredMovie)" 
+                       class="bg-gray-500/70 text-white hover:bg-gray-600/70 px-4 py-2 rounded flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  More Info
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Movie Rows -->
+        <div class="relative pb-24 pl-4 lg:pl-16">
+          <template x-for="(row, index) in movieRows" :key="index">
+            <div class="h-40 space-y-0.5 md:space-y-2 px-4 md:px-0 mb-6">
+              <h2 class="w-56 cursor-pointer text-sm font-semibold text-white transition duration-200 hover:text-gray-300 md:text-xl" 
+                  x-text="row.title"></h2>
+              <div class="group relative md:-ml-2">
+                <div class="flex items-center space-x-0.5 overflow-x-scroll scrollbar-hide md:space-x-2.5 md:p-2">
+                  <template x-for="(movie, movieIndex) in row.movies" :key="movieIndex">
+                    <div class="relative h-28 min-w-[180px] cursor-pointer transition duration-200 ease-out md:h-36 md:min-w-[260px] md:hover:scale-105 group">
+                      <img :src="movie.backdrop_path ? 'https://image.tmdb.org/t/p/w500' + movie.backdrop_path : 
+                                 movie.poster_path ? 'https://image.tmdb.org/t/p/w500' + movie.poster_path : 
+                                 '/placeholder.svg?height=200&width=300'" 
+                           :alt="movie.title || movie.name || ''" 
+                           class="rounded-sm object-cover w-full h-full md:rounded"
+                           @click="showMovieDetails(movie)">
+                      
+                      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between z-20">
+                          <button @click.stop="watchMovie(movie)" 
+                                 class="bg-white text-black rounded-full p-1 hover:bg-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                          
+                          <button @click.stop="toggleMyList(movie)" 
+                                  class="rounded-full bg-gray-800/60 hover:bg-gray-700/60 p-1">
+                            <template x-if="isInMyList(movie)">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </template>
+                            <template x-if="!isInMyList(movie)">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                              </svg>
+                            </template>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+      
+      <!-- Movie Detail View -->
+      <div x-show="currentView === 'detail'" class="relative min-h-screen pt-16">
+        <div class="relative h-[70vh]">
+          <template x-if="currentMovie.backdrop_path || currentMovie.poster_path">
+            <img :src="'https://image.tmdb.org/t/p/original' + (currentMovie.backdrop_path || currentMovie.poster_path)" 
+                 :alt="currentMovie.title || currentMovie.name || 'Movie'" 
+                 class="object-cover w-full h-full">
+          </template>
+          <div class="absolute bottom-0 w-full bg-gradient-to-t from-black to-transparent h-1/2"></div>
+        </div>
+        
+        <div class="px-4 md:px-16 pb-24 -mt-32 relative z-10">
+          <h1 class="text-3xl md:text-5xl font-bold" x-text="currentMovie.title || currentMovie.name"></h1>
+          
+          <div class="flex items-center space-x-4 mt-4">
+            <p class="text-green-500 font-semibold" x-text="Math.round((currentMovie.vote_average || 0) * 10) + '% Match'"></p>
+            <p class="text-gray-400" x-text="(currentMovie.release_date || currentMovie.first_air_date || '').split('-')[0]"></p>
+            <template x-if="currentMovie.runtime > 0">
+              <p class="text-gray-400" x-text="Math.floor(currentMovie.runtime / 60) + 'h ' + (currentMovie.runtime % 60) + 'm'"></p>
+            </template>
+            <span class="border border-white/40 px-2 text-xs">HD</span>
+          </div>
+          
+          <div class="flex space-x-4 mt-6">
+            <button @click="watchMovie(currentMovie)" 
+                   class="bg-white text-black hover:bg-gray-300 px-4 py-2 rounded flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Play
+            </button>
+            <button @click="toggleMyList(currentMovie)" 
+                    class="border border-white/40 bg-transparent hover:bg-white/10 px-4 py-2 rounded flex items-center">
+              <template x-if="isInMyList(currentMovie)">
+                <div class="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  In My List
+                </div>
+              </template>
+              <template x-if="!isInMyList(currentMovie)">
+                <div class="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  My List
+                </div>
+              </template>
+            </button>
+          </div>
+          
+          <div class="mt-8 max-w-3xl">
+            <p class="text-lg" x-text="currentMovie.overview"></p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Watch View -->
+      <div x-show="currentView === 'watch'" class="relative min-h-screen bg-black pt-16">
+        <div class="px-4 md:px-8 max-w-7xl mx-auto">
+          <div class="py-8">
+            <h1 class="text-2xl md:text-4xl font-bold text-center mb-8" x-text="currentMovie.title || currentMovie.name"></h1>
+            
+            <div class="grid gap-6 lg:grid-cols-1">
+              <div class="relative w-full" style="padding-bottom: 56.25%;">
+                <div x-show="isLoading" class="absolute inset-0 flex items-center justify-center bg-black">
+                  <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-500"></div>
+                </div>
+                
+                <div x-show="hasError && !isLoading" class="absolute inset-0 flex items-center justify-center bg-black">
+                  <div class="text-center p-4">
+                    <p class="text-lg font-semibold text-red-500 mb-2">Content Unavailable</p>
+                    <p class="text-sm text-gray-400 mb-4">This media source is currently unavailable.</p>
+                    <template x-if="currentSourceIndex < videoSources.length - 1">
+                      <button
+                        @click="tryNextSource()"
+                        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                      >
+                        Try Next Source
+                      </button>
+                    </template>
+                  </div>
+                </div>
+                
+                <iframe :src="currentVideoUrl"
+                        class="absolute top-0 left-0 w-full h-full"
+                        allowfullscreen
+                        allow="autoplay; fullscreen"
+                        @load="handleVideoLoad"
+                        @error="handleVideoError"></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Search Results View -->
+      <div x-show="currentView === 'search'" class="pt-24 px-4 md:px-16">
+        <h2 class="text-2xl font-bold mb-6" x-text="'Search results for: ' + searchQuery"></h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <template x-for="(result, index) in searchResults" :key="index">
+            <div class="relative cursor-pointer transition duration-200 ease-out hover:scale-105 group">
+              <img :src="result.poster_path ? 'https://image.tmdb.org/t/p/w500' + result.poster_path : 
+                         result.backdrop_path ? 'https://image.tmdb.org/t/p/w500' + result.backdrop_path : 
+                         '/placeholder.svg?height=300&width=200'" 
+                   :alt="result.title || result.name || ''" 
+                   class="rounded-sm object-cover w-full aspect-[2/3] md:rounded"
+                   @click="showMovieDetails(result)">
+              
+              <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+                <h3 class="text-sm font-medium truncate" x-text="result.title || result.name"></h3>
+                <p class="text-xs text-gray-400" x-text="(result.release_date || result.first_air_date || '').split('-')[0]"></p>
+              </div>
+              
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between z-20">
+                  <button @click.stop="watchMovie(result)" 
+                         class="bg-white text-black rounded-full p-1 hover:bg-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  
+                  <button @click.stop="toggleMyList(result)" 
+                          class="rounded-full bg-gray-800/60 hover:bg-gray-700/60 p-1">
+                    <template x-if="isInMyList(result)">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </template>
+                    <template x-if="!isInMyList(result)">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </template>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+        
+        <template x-if="searchResults.length === 0">
+          <div class="text-center py-12">
+            <p class="text-xl text-gray-400">No results found for your search.</p>
+          </div>
+        </template>
+      </div>
+      
+      <!-- My List View -->
+      <div x-show="currentView === 'my-list'" class="pt-24 px-4 md:px-16">
+        <h2 class="text-2xl font-bold mb-6">My List</h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <template x-for="(item, index) in myList" :key="index">
+            <div class="relative cursor-pointer transition duration-200 ease-out hover:scale-105 group">
+              <img :src="item.poster_path ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : 
+                         item.backdrop_path ? 'https://image.tmdb.org/t/p/w500' + item.backdrop_path : 
+                         '/placeholder.svg?height=300&width=200'" 
+                   :alt="item.title || item.name || ''" 
+                   class="rounded-sm object-cover w-full aspect-[2/3] md:rounded"
+                   @click="showMovieDetails(item)">
+              
+              <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+                <h3 class="text-sm font-medium truncate" x-text="item.title || item.name"></h3>
+                <p class="text-xs text-gray-400" x-text="(item.release_date || item.first_air_date || '').split('-')[0]"></p>
+              </div>
+              
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between z-20">
+                  <button @click.stop="watchMovie(item)" 
+                         class="bg-white text-black rounded-full p-1 hover:bg-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  
+                  <button @click.stop="toggleMyList(item)" 
+                          class="rounded-full bg-gray-800/60 hover:bg-gray-700/60 p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+        
+        <template x-if="myList.length === 0">
+          <div class="text-center py-12">
+            <p class="text-xl text-gray-400">Your list is empty. Add movies and TV shows to your list.</p>
+          </div>
+        </template>
+      </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="w-full bg-black py-8 px-4 mt-auto border-t border-gray-800">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+          <div class="mb-4 md:mb-0">
+            <p class="text-gray-400 text-sm">
+              Questions? Contact us at <a href="mailto:support@lotsoflex.com" class="text-gray-300 hover:underline">support@lotsoflex.com</a>
+            </p>
+          </div>
+          
+          <div class="text-center md:text-right">
+            <p class="text-gray-500 text-sm">
+              Made by LFakh ~ all rights reserved <span x-text="copyrightYears"></span>
+            </p>
+          </div>
+        </div>
+   <!-- App Script -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
+
