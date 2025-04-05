@@ -47,6 +47,78 @@ app.get("/api/tmdb/top-rated", async (req, res) => {
   }
 })
 
+// TV Shows endpoints
+app.get("/api/tmdb/tv/popular", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/tv/popular")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching popular TV shows:", error)
+    res.status(500).json({ error: "Failed to fetch popular TV shows" })
+  }
+})
+
+app.get("/api/tmdb/tv/top-rated", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/tv/top_rated")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching top rated TV shows:", error)
+    res.status(500).json({ error: "Failed to fetch top rated TV shows" })
+  }
+})
+
+app.get("/api/tmdb/tv/airing-today", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/tv/airing_today")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching airing today:", error)
+    res.status(500).json({ error: "Failed to fetch airing today" })
+  }
+})
+
+// Movies endpoints
+app.get("/api/tmdb/movies/popular", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/movie/popular")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching popular movies:", error)
+    res.status(500).json({ error: "Failed to fetch popular movies" })
+  }
+})
+
+app.get("/api/tmdb/movies/top-rated", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/movie/top_rated")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching top rated movies:", error)
+    res.status(500).json({ error: "Failed to fetch top rated movies" })
+  }
+})
+
+app.get("/api/tmdb/movies/upcoming", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/movie/upcoming")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching upcoming movies:", error)
+    res.status(500).json({ error: "Failed to fetch upcoming movies" })
+  }
+})
+
+app.get("/api/tmdb/movies/now-playing", async (req, res) => {
+  try {
+    const data = await fetchFromTMDB("/movie/now_playing")
+    res.json(data)
+  } catch (error) {
+    console.error("Error fetching now playing movies:", error)
+    res.status(500).json({ error: "Failed to fetch now playing movies" })
+  }
+})
+
 app.get("/api/tmdb/action", async (req, res) => {
   try {
     const data = await fetchFromTMDB("/discover/movie?with_genres=28")

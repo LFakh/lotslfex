@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Head section remains unchanged -->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,7 +54,7 @@
 </head>
 <body>
   <div x-data="app()" x-init="initialize()" class="min-h-screen flex flex-col">
-    <!-- Navbar remains unchanged -->
+    <!-- Navbar -->
     <nav class="fixed top-0 z-50 w-full transition-colors duration-300" 
          :class="{ 'bg-black': isScrolled, 'bg-gradient-to-b from-black/80 to-transparent': !isScrolled }">
       <div class="flex items-center space-x-2 md:space-x-10 px-4 md:px-8 py-4">
@@ -222,8 +221,78 @@
           </template>
         </div>
       </div>
+
+      <!-- TV Shows View -->
+      <div x-show="currentView === 'tv'" class="pt-24 px-4 md:px-16">
+        <h1 class="text-3xl font-bold mb-8">TV Shows</h1>
+        
+        <template x-if="isLoading">
+          <div class="flex items-center justify-center h-[50vh]">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-500"></div>
+          </div>
+        </template>
+        
+        <template x-if="!isLoading">
+          <div class="space-y-8">
+            <template x-for="(section, index) in tvShows" :key="index">
+              <div>
+                <h2 class="text-xl font-semibold mb-4" x-text="section.title"></h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  <template x-for="(show, showIndex) in section.items" :key="showIndex">
+                    <div class="relative cursor-pointer transition duration-200 ease-out hover:scale-105">
+                      <img :src="show.poster_path ? 'https://image.tmdb.org/t/p/w500' + show.poster_path : '/placeholder.svg?height=300&width=200'"
+                           :alt="show.name"
+                           class="rounded-lg w-full"
+                           @click="showMovieDetails(show)">
+                      <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+                        <h3 class="text-sm font-medium" x-text="show.name"></h3>
+                        <p class="text-xs text-gray-400" x-text="show.first_air_date?.split('-')[0]"></p>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <!-- Movies View -->
+      <div x-show="currentView === 'movies'" class="pt-24 px-4 md:px-16">
+        <h1 class="text-3xl font-bold mb-8">Movies</h1>
+        
+        <template x-if="isLoading">
+          <div class="flex items-center justify-center h-[50vh]">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-500"></div>
+          </div>
+        </template>
+        
+        <template x-if="!isLoading">
+          <div class="space-y-8">
+            <template x-for="(section, index) in movies" :key="index">
+              <div>
+                <h2 class="text-xl font-semibold mb-4" x-text="section.title"></h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  <template x-for="(movie, movieIndex) in section.items" :key="movieIndex">
+                    <div class="relative cursor-pointer transition duration-200 ease-out hover:scale-105">
+                      <img :src="movie.poster_path ? 'https://image.tmdb.org/t/p/w500' + movie.poster_path : '/placeholder.svg?height=300&width=200'"
+                           :alt="movie.title"
+                           class="rounded-lg w-full"
+                           @click="showMovieDetails(movie)">
+                      <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+                        <h3 class="text-sm font-medium" x-text="movie.title"></h3>
+                        <p class="text-xs text-gray-400" x-text="movie.release_date?.split('-')[0]"></p>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
       
-      <!-- Movie Detail View remains unchanged -->
+      <!-- Movie Detail View -->
       <div x-show="currentView === 'detail'" class="relative min-h-screen pt-16">
         <template x-if="isLoading">
           <div class="flex items-center justify-center h-[70vh]">
@@ -345,7 +414,7 @@
         </template>
       </div>
       
-      <!-- Watch View remains unchanged -->
+      <!-- Watch View -->
       <div x-show="currentView === 'watch'" class="relative min-h-screen bg-black pt-16">
         <div class="px-4 md:px-8 max-w-7xl mx-auto">
           <div class="py-8">
@@ -378,7 +447,7 @@
         </div>
       </div>
       
-      <!-- Search Results View remains unchanged -->
+      <!-- Search Results View -->
       <div x-show="currentView === 'search'" class="pt-24 px-4 md:px-16">
         <h2 class="text-2xl font-bold mb-6" x-text="'Search results for: ' + searchQuery"></h2>
         
@@ -437,13 +506,12 @@
         
         <template x-if="searchResults.length === 0">
           <div class="text-center py-12">
-            
             <p class="text-xl text-gray-400">No results found for your search.</p>
           </div>
         </template>
       </div>
       
-      <!-- My List View remains unchanged -->
+      <!-- My List View -->
       <div x-show="currentView === 'my-list'" class="pt-24 px-4 md:px-16">
         <h2 class="text-2xl font-bold mb-6">My List</h2>
         

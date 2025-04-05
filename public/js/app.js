@@ -15,6 +15,8 @@ document.addEventListener("alpine:init", () => {
     isLoading: true,
     hasError: false,
     copyrightYears: "",
+    tvShows: [],
+    movies: [],
 
     // Video Player State
     isFullscreen: false,
@@ -94,6 +96,52 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
+    async fetchTVShows() {
+      this.isLoading = true
+      try {
+        const [popular, topRated, airingToday] = await Promise.all([
+          fetch("/api/tmdb/tv/popular").then((res) => res.json()),
+          fetch("/api/tmdb/tv/top-rated").then((res) => res.json()),
+          fetch("/api/tmdb/tv/airing-today").then((res) => res.json()),
+        ])
+
+        this.tvShows = [
+          { title: "Popular TV Shows", items: popular.results || [] },
+          { title: "Top Rated TV Shows", items: topRated.results || [] },
+          { title: "Airing Today", items: airingToday.results || [] },
+        ]
+        this.isLoading = false
+      } catch (error) {
+        console.error("Error fetching TV shows:", error)
+        this.hasError = true
+        this.isLoading = false
+      }
+    },
+
+    async fetchAllMovies() {
+      this.isLoading = true
+      try {
+        const [popular, topRated, upcoming, nowPlaying] = await Promise.all([
+          fetch("/api/tmdb/movies/popular").then((res) => res.json()),
+          fetch("/api/tmdb/movies/top-rated").then((res) => res.json()),
+          fetch("/api/tmdb/movies/upcoming").then((res) => res.json()),
+          fetch("/api/tmdb/movies/now-playing").then((res) => res.json()),
+        ])
+
+        this.movies = [
+          { title: "Popular Movies", items: popular.results || [] },
+          { title: "Top Rated Movies", items: topRated.results || [] },
+          { title: "Upcoming Movies", items: upcoming.results || [] },
+          { title: "Now Playing", items: nowPlaying.results || [] },
+        ]
+        this.isLoading = false
+      } catch (error) {
+        console.error("Error fetching movies:", error)
+        this.hasError = true
+        this.isLoading = false
+      }
+    },
+
     // Video Player
     setupVideoSources(id, type) {
       // Multiple video sources to try
@@ -147,6 +195,12 @@ document.addEventListener("alpine:init", () => {
       if (path === "/" || path === "/index.html") {
         this.currentView = "home"
         this.fetchMovies()
+      } else if (path === "/tv-shows") {
+        this.currentView = "tv"
+        this.fetchTVShows()
+      } else if (path === "/movies") {
+        this.currentView = "movies"
+        this.fetchAllMovies()
       } else if (path.match(/\/watch\/\d+/)) {
         this.currentView = "watch"
         const segments = path.split("/").filter(Boolean)
@@ -166,6 +220,8 @@ document.addEventListener("alpine:init", () => {
           this.searchQuery = query
           this.performSearch(query)
         }
+      } else if (path === "/my-list") {
+        this.currentView = "my-list"
       }
     },
 
